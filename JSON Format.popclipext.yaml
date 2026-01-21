@@ -1,7 +1,0 @@
-#popclip JSON Format by djonathan.com
-name: JSON Format
-icon: iconify:bi:filetype-json
-javascript: |
-  let text = popclip.input.text;
-  text = JSON.stringify(JSON.parse(text), null, 4);
-  popclip.pasteText(text);

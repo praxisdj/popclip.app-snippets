@@ -1,0 +1,82 @@
+#popclip JSON Format by djonathan.com
+name: JSON Format
+icon: iconify:bi:filetype-json
+javascript: |
+  function tryParse(str) {
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function tryFixAndParse(text) {
+    // Try direct parse first
+    let result = tryParse(text);
+    if (result !== null) return result;
+
+    // Try fixing double-escaped quotes (\\\" -> \")
+    let fixed = text.replace(/\\\\"/g, '\\"');
+    result = tryParse(fixed);
+    if (result !== null) return result;
+
+    // Try fixing single quotes to double quotes
+    fixed = text.replace(/'/g, '"');
+    result = tryParse(fixed);
+    if (result !== null) return result;
+
+    // Try removing trailing commas in arrays and objects
+    fixed = text.replace(/,\s*([\]}])/g, '$1');
+    result = tryParse(fixed);
+    if (result !== null) return result;
+
+    // Try fixing unquoted keys: {key: "value"} -> {"key": "value"}
+    fixed = text.replace(/(\{|\,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    result = tryParse(fixed);
+    if (result !== null) return result;
+
+    // Try combination: trailing commas + unquoted keys
+    fixed = text.replace(/,\s*([\]}])/g, '$1').replace(/(\{|\,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    result = tryParse(fixed);
+    if (result !== null) return result;
+
+    return null;
+  }
+
+  function expandNestedJson(obj) {
+    if (obj === null || typeof obj !== 'object') return obj;
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => expandNestedJson(item));
+    }
+
+    const result = {};
+    for (const key in obj) {
+      let value = obj[key];
+      if (typeof value === 'string') {
+        // Check if string is valid JSON (object or array)
+        const trimmed = value.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+            (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+          const parsed = tryParse(value);
+          if (parsed !== null) {
+            value = expandNestedJson(parsed);
+          }
+        }
+      } else if (typeof value === 'object') {
+        value = expandNestedJson(value);
+      }
+      result[key] = value;
+    }
+    return result;
+  }
+
+  let text = popclip.input.text;
+  let parsed = tryFixAndParse(text);
+
+  if (parsed !== null) {
+    parsed = expandNestedJson(parsed);
+    popclip.pasteText(JSON.stringify(parsed, null, 4));
+  } else {
+    popclip.showText("Invalid JSON");
+  }

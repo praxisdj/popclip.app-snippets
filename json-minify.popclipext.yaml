@@ -1,0 +1,7 @@
+#popclip JSON Minify by djonathan.com
+name: JSON Minify
+icon: iconify:lucide:minimize-2
+javascript: |
+  let text = popclip.input.text;
+  text = JSON.stringify(JSON.parse(text));
+  popclip.pasteText(text);
